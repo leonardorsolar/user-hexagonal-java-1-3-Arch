@@ -424,7 +424,10 @@ Em Arquitetura Hexagonal, o lado do "Driver" (Ator Primário) representa aqueles
 
 ## Parte 2: Estrutura da Arquitetura Hexagonal
 
-Podemos ter várias forma de organizar as pastas do projeto. vamos ver isso:
+Podemos ter várias forma de organizar as pastas do projeto.
+A Estrutura a seguir 1 e 2 focam na ideia clássica de Hexagonal Architecture:
+
+-   Separar adaptadores (adapters) que conectam o mundo externo (interfaces, APIs, bancos) da lógica da aplicação (application).
 
 ## 🟨 Estrutura 1 com `adapters` e `application`
 
@@ -445,10 +448,58 @@ src/
 │   └── ports/                            #    🚪 Interfaces que definem os contratos da aplicação
 │       ├── in/                           #       ↩️ Portas de entrada: contratos dos casos de uso
 │       └── out/                          #       ↪️ Portas de saída: contratos com infraestrutura (repos, serviços)
-
+├── shared/
 ```
 
-## 🟨 Estrutura 2 com `domain` , `application` e `infrastructure`
+-   Adapters é o termo clássico da arquitetura hexagonal para os componentes que adaptam o sistema ao ambiente externo.
+-   A pasta application pode conter o que chamamos de casos de uso, serviços e portas (interfaces)
+-   Nomes como inbound e outbound explicam claramente o fluxo (entrada/saída).
+-   core é um termo mais genérico.
+
+Outra forma de se expressas
+
+## 🟨 Estrutura 2 com `adapters` e `application`
+
+```text
+src/
+├── adapters/                             # 🔌 Adaptadores que conectam o mundo externo ao sistema
+│   ├── in/                               # ↩️ Entrada: recebe requisições externas (ex: APIs, controllers)
+│   │   └── web/
+│   │        └── controller/              #    └── Controladores REST ou HTTP que iniciam os casos de uso
+│   └── out/                              # ↪️ Saída: comunica com sistemas externos (ex: banco de dados, serviços)
+│       └── persistence/
+│              └── repository/            #    └── Implementações de persistência (ex: JPA, Mongo, JDBC)
+│
+├── application/                          # 🧠 Lógica de aplicação (casos de uso e orquestração)
+│   ├── domain/                           #    🔁 Núcleo da aplicação (sem dependências externas)
+│   │   ├── service/                      #     ⚙️ Implementações dos casos de uso (ex: CriarUsuarioService.java)
+│   │   └── model/                        #       Entidades de negócio e regras do domínio
+│   └── ports/                            #    🚪 Interfaces que definem os contratos da aplicação
+│       ├── in/                           #       ↩️ Portas de entrada: contratos dos casos de uso
+│       └── out/                          #       ↪️ Portas de saída: contratos com infraestrutura (repos, serviços)
+│
+├── common/
+```
+
+Vejo aqui um problema conceitual:
+
+-   Domain dentro da pasta application - Quebra o conceito hierárquico, domínio não é aplicação
+    Separe domínio e aplicação em pastas distintas seria o ideal
+-   Pasta service dentro do domain na aplicação. Confunde serviço de domínio com serviço de aplicação. Deve-se separar os serviços de domínio e serviços de aplicação claramente
+
+Vamos ver mais uma estrutura:
+
+A estrutura 3 já traz um estilo mais alinhado com DDD (Domain-Driven Design) + Clean Architecture, onde:
+
+-   O projeto é modularizado por domínios ou features (ex: módulo user)
+-   Tem camadas bem definidas e com nomes bem explícitos: domain (regras de negócio puras), application (casos de uso), infrastructure (implementações concretas, adaptadores).
+-   É uma forma mais robusta, clara para sistemas maiores e com múltiplos domínios, que facilita modularização e manutenção.
+
+## 🟨 Estrutura 3 com `domain` , `application` e `infrastructure`
+
+-   Domain = Core: Regras de negócio puras, modelos do negócio. O "coração" do sistema.
+-   Application: Camada que usa o domínio para realizar tarefas, orquestra casos de uso, interage com o mundo externo e infraestrutura.
+-   Core: Palavra usada para enfatizar o domínio como o núcleo independente, o "coração" que não depende de nada
 
 ![Arquitetura Hexagonal](./docs/image/domaplInf.png)
 
@@ -457,13 +508,30 @@ Facilita a visualização da separação de responsabilidades (DDD + Hexagonal +
 Adapta-se melhor à modularização por domínio, caso o sistema cresça.
 Mais flexível para projetos reais
 
+### O que faz o Domain (Domínio) de forma simples?
+
+O Domain é o lugar onde ficam as regras de negócio verdadeiras — ou seja, as regras do problema real que o sistema resolve.Ele representa o que o negócio exige, independentemente de tecnologia, interface ou banco de dados.Aqui ficam as entidades, seus comportamentos, e regras que garantem que o negócio funcione direito.
+Exemplo:
+No domínio você terá:
+Cliente que sabe se está ativo ou não.
+Pedido que sabe quando pode ser confirmado.
+
+### O que faz a Application (Aplicação) de forma simples?
+
+A Application organiza a lógica de uso do sistema, ou seja, ela diz como as regras de negócio do domínio são usadas para realizar tarefas.Ela controla o fluxo, chama os objetos do domínio, interage com bancos, serviços externos, e prepara dados para a interface.
+Não contém regras do negócio, mas sim orquestra o processo para cumprir um caso de uso.
+Exemplo:
+Na aplicação você terá:
+Um serviço que recebe uma requisição para criar pedido, verifica dados, chama o domínio para criar o pedido e grava no banco.
+Ela garante que tudo aconteça na ordem certa.
+
 ```text
 src/main/java/com/exemplo/hexagonal/
 ├── HexagonalApplication.java               # 🚀 Classe principal que inicia a aplicação Spring Boot
 │
 ├── user/                                   # 🧍 Módulo de Usuário (Feature modularizada isoladamente)
 │   ├── domain/                             # 🧠 Núcleo do domínio do usuário (regra de negócio pura)
-│   │   └── model/                          #     📦 Entidades do domínio (ex: Usuario.java)
+│   │   └── entities/                          # 📦 Entidades do domínio (ex: Usuario.java)
 │
 │   ├── application/                        # 💡 Camada de aplicação (orquestra os casos de uso)
 │   │   ├── port/                           #     🚪 Portas: interfaces que expõem (input) e consomem (output) funcionalidades
@@ -492,11 +560,16 @@ src/main/java/com/exemplo/hexagonal/
 
 ```
 
+No DDD clássico, domain representa o núcleo do negócio, com entidades, agregados e regras puras.
+O nome model vem da tradição MVC (Model-View-Controller) e significa "modelo de dados". Algumas pessoas usam model para representar entidades do domínio. Termo vago, misturado com conceito MVC tradicional. Mas em arquiteturas baseadas em DDD, o termo mais adequado é "entities", "domain model" ou simplesmente "domain".
+
 Resumo das vantagens dessa estrutura:
 Altamente didática: cada camada e módulo tem seu espaço e responsabilidade.
 Organização modular (por feature): permite escalar para vários domínios como account/, product/, etc.
 Segregação limpa entre domínio, aplicação e infraestrutura.
 Facilita testes, manutenção e colaboração entre times.
+
+Essas diferenças de nomenclatura e organização entre as estruturas são bem comuns e refletem variações do mesmo conceito básico da Arquitetura Hexagonal, adaptadas para diferentes estilos, objetivos e níveis de maturidade do projeto.
 
 ### ✅ Estrutura Modular por Módulo / Feature ( módulo User)
 
@@ -505,7 +578,7 @@ src/main/java/com/exemplo/hexagonal/
 ├── HexagonalApplication.java
 ├── user/                              # 🧍 Módulo de Usuário
 │   ├── domain/                        # ← CORE do módulo usuário
-│   │   ├── model/ (Usuario.java)
+│   │   ├── entities/ (Usuario.java)
 │   │   └── exception/
 │   ├── application/
 │   │   ├── port/
@@ -547,7 +620,7 @@ src/main/java/com/exemplo/hexagonal/
 ├── HexagonalApplication.java
 ├── user/                              # 🧍 Módulo de Usuário
 │   ├── domain/                        # ← CORE do módulo usuário
-│   │   ├── model/ (Usuario.java)
+│   │   ├── entities/ (Usuario.java)
 │   │   └── exception/
 │   ├── application/
 │   │   ├── port/
@@ -709,15 +782,16 @@ src/main/java/com/exemplo/hexagonal/
 ├── HexagonalApplication.java
 ├── user/                              # 🧍 Módulo de Usuário
 │   ├── domain/                        # ← CORE do módulo usuário
-│   │   ├── model/ (Usuario.java)
+│   │   ├── model/ (Usuario.java)      # 🔁 Núcleo do domínio (entidades e regras puras)
+│       ├── service/                   # Serviços de domínio (regra de negócio complexa)
 │   │   └── exception/
-│   ├── application/
-│   │   ├── port/
+│   ├── application/                             # 🧠 Casos de uso / orquestração da aplicação
+│   │   ├── port/                                 # Interfaces de entrada e saída (contratos)
 │   │   │   ├── input/ (CriarUsuarioUseCase.java)
 │   │   │   └── output/ (UsuarioRepositoryPort.java)
-│   │   ├── service/ (CriarUsuarioService.java)
+│   │   ├── service/ (CriarUsuarioService.java)   # Implementação dos casos de uso (ex: CriarUsuarioService.java)
 │   │   └── dto/
-│   ├── infrastructure/
+│   ├── infrastructure/                            # 🛠️ Implementação concreta (adaptadores, persistência, etc)
 │   │   ├── adapter/
 │   │   │   ├── input/web/ (UsuarioController.java)
 │   │   │   └── output/persistence/
@@ -765,8 +839,74 @@ A estrutura modularizada por funcionalidade (como user/, account/) é mais didá
 
 ---
 
-Se quiser, posso gerar **um diagrama visual ou PlantUML** com essa estrutura modular. Deseja isso também?
+# Conhecimentos: Domínio anêmico e rico
 
-```
+Ótima observação! Você apontou um ponto muito comum e importante no desenvolvimento de software: **por que algumas entidades (como essa classe `Usuario`) são "puras" só com dados e validações técnicas, mas não têm regras de negócio explícitas?**
 
-```
+Vou explicar as razões principais para isso e o que isso significa no contexto de arquitetura limpa e DDD:
+
+---
+
+## 1. **Essa classe `Usuario` é um _Entity_ "anêmica"**
+
+-   O código que você mostrou é um exemplo clássico do que chamamos de **Anemic Domain Model** (Modelo de Domínio Anêmico).
+-   É uma entidade que contém **apenas atributos (dados) e algumas validações técnicas**, mas quase nenhuma regra de negócio embutida nela.
+-   Essa prática é muito comum em projetos que usam JPA/Hibernate porque:
+
+    -   O foco é mapear diretamente para o banco de dados (ORM)
+    -   As regras de negócio acabam ficando fora da entidade, geralmente em serviços ou camadas de aplicação.
+
+---
+
+## 2. **Por que isso acontece?**
+
+-   **Separação de preocupações vs praticidade:**
+    As entidades JPA precisam ser simples para funcionar bem com o ORM, muitas vezes isso faz os desenvolvedores colocarem regras fora da entidade.
+-   **Falta de aplicação estrita de DDD:**
+    Nem todo projeto segue os princípios de DDD puro onde as entidades carregam comportamento e regras do negócio. Muitos projetos são mais “CRUD-centric” (focados em criar, ler, atualizar e deletar dados).
+-   **Validações técnicas embutidas:**
+    As anotações `@NotBlank`, `@Email` e etc são para validar o formato e integridade dos dados, não são regras do negócio.
+-   **Regras de negócio estão em outro lugar:**
+    Normalmente, as regras como "Usuário só pode ser inativado se não tiver pendências" ficariam em serviços de domínio ou na camada de aplicação.
+
+---
+
+## 3. **Qual o problema dessa abordagem?**
+
+-   Essa “anemia” pode fazer seu modelo de domínio **ficar muito fraco**, pois as regras ficam dispersas, dificultando a manutenção, evolução e teste.
+-   Você perde a vantagem de encapsular regras junto com os dados, que é um dos pilares do DDD.
+
+---
+
+## 4. **Quando usar entidades com comportamento?**
+
+-   Quando quiser que o domínio reflita fielmente o negócio, a entidade deve conter comportamentos (métodos) que **garantem as regras de negócio**, e não só dados.
+-   Exemplo:
+
+    ```java
+    public class Usuario {
+        private Boolean ativo = true;
+        // ...
+        public void inativar() {
+            if (temPendencias()) {
+                throw new BusinessException("Usuário não pode ser inativado com pendências");
+            }
+            this.ativo = false;
+        }
+        // método que verifica regra de negócio
+        private boolean temPendencias() {
+            // lógica para verificar pendências
+        }
+    }
+    ```
+
+---
+
+## 5. **Resumo**
+
+| Aspecto                       | Entidade “anêmica” (exemplo dado)                   | Entidade rica em comportamento (DDD puro)             |
+| ----------------------------- | --------------------------------------------------- | ----------------------------------------------------- |
+| Contém                        | Apenas dados e validações técnicas                  | Dados + regras de negócio e comportamento             |
+| Onde ficam regras de negócio? | Em serviços ou aplicação                            | Dentro da própria entidade/domain                     |
+| Vantagem                      | Fácil para CRUD simples e integração com ORM        | Domínio expressivo, regras encapsuladas, mais robusto |
+| Desvantagem                   | Domínio fraco, regras dispersas, difícil manutenção | Pode ser mais complexo para iniciar, exige disciplina |
