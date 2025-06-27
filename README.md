@@ -424,9 +424,81 @@ Em Arquitetura Hexagonal, o lado do "Driver" (Ator Primário) representa aqueles
 
 ## Parte 2: Estrutura da Arquitetura Hexagonal
 
-### Pensando em estrutura modular:
+Podemos ter várias forma de organizar as pastas do projeto. vamos ver isso:
 
-### ✅ Estrutura Básica (Modular por Módulo / Feature)
+## 🟨 Estrutura 1 com `adapters` e `application`
+
+![Arquitetura Hexagonal](./docs/image/aplicaAdp.png)
+
+```text
+src/
+├── adapters/                             # 🔌 Adaptadores que conectam o mundo externo ao sistema
+│   ├── inbound/                          # ↩️ Entrada: recebe requisições externas (ex: APIs, controllers)
+│   │   └── controller/                   #    └── Controladores REST ou HTTP que iniciam os casos de uso
+│   └── outbound/                         # ↪️ Saída: comunica com sistemas externos (ex: banco de dados, serviços)
+│       └── repository/                   #    └── Implementações de persistência (ex: JPA, Mongo, JDBC)
+
+├── application/                          # 🧠 Lógica de aplicação (casos de uso e orquestração)
+│   ├── core/                             #    🔁 Núcleo da aplicação (sem dependências externas)
+│   │   ├── service/                       #     ⚙️ Implementações dos casos de uso (ex: CriarUsuarioService.java)
+│   │   └── domain/                       #       Entidades de negócio e regras do domínio
+│   └── ports/                            #    🚪 Interfaces que definem os contratos da aplicação
+│       ├── in/                           #       ↩️ Portas de entrada: contratos dos casos de uso
+│       └── out/                          #       ↪️ Portas de saída: contratos com infraestrutura (repos, serviços)
+
+```
+
+## 🟨 Estrutura 2 com `domain` , `application` e `infrastructure`
+
+![Arquitetura Hexagonal](./docs/image/domaplInf.png)
+
+Reflete os níveis lógicos da aplicação (domínio → aplicação → infraestrutura).
+Facilita a visualização da separação de responsabilidades (DDD + Hexagonal + Clean Architecture)
+Adapta-se melhor à modularização por domínio, caso o sistema cresça.
+Mais flexível para projetos reais
+
+```text
+src/main/java/com/exemplo/hexagonal/
+├── HexagonalApplication.java               # 🚀 Classe principal que inicia a aplicação Spring Boot
+│
+├── user/                                   # 🧍 Módulo de Usuário (Feature modularizada isoladamente)
+│   ├── domain/                             # 🧠 Núcleo do domínio do usuário (regra de negócio pura)
+│   │   └── model/                          #     📦 Entidades do domínio (ex: Usuario.java)
+│
+│   ├── application/                        # 💡 Camada de aplicação (orquestra os casos de uso)
+│   │   ├── port/                           #     🚪 Portas: interfaces que expõem (input) e consomem (output) funcionalidades
+│   │   │   ├── input/                      #       ↩️ Casos de uso oferecidos ao mundo externo (ex: CriarUsuarioUseCase.java)
+│   │   │   └── output/                     #       ↪️ Contratos com serviços externos (ex: UsuarioRepositoryPort.java)
+│   │   ├── service/                        #     ⚙️ Implementações dos casos de uso (ex: CriarUsuarioService.java)
+│   │   └── dto/                            #     📤 Objetos de transferência de dados (ex: CreateUsuarioDTO, UpdateUsuarioDTO)
+│
+│   ├── infrastructure/                     # 🛠️ Implementações concretas de acesso externo (adaptadores e configurações)
+│   │   ├── adapter/                        #     🔌 Adaptadores conectando o domínio com o mundo externo
+│   │   │   ├── input/web/                  #       🌐 Adaptadores de entrada (ex: REST Controllers)
+│   │   │   │   └── UsuarioController.java  #         → Recebe requisições HTTP e chama os casos de uso
+│   │   │   └── output/persistence/         #       🗄️ Adaptadores de saída (ex: banco de dados, via JPA)
+│   │   │       └── UsuarioRepositoryAdapter.java #   → Implementa a interface de repositório definida na camada de aplicação
+│   │   └── encoder/, email/                #     🔐 Serviços externos (ex: codificador de senha, envio de e-mail)
+│   │
+│   └── mapper/                             # 🔄 Conversores entre entidades, DTOs e objetos de persistência
+│       └── UsuarioMapper.java
+│
+├── shared/                                 # 📦 Código genérico e reutilizável entre módulos
+│   ├── config/
+│   │   └── (DatabaseConfig.java, BeanConfig.java) # ⚙️ Configurações globais da aplicação
+│   ├── exception/                                 # ❗ Tratamento de exceções genéricas da aplicação
+│   │   └── GlobalExceptionHandler.java
+│   └── util/                                      # 🧰 Utilitários diversos compartilhados entre módulos
+
+```
+
+Resumo das vantagens dessa estrutura:
+Altamente didática: cada camada e módulo tem seu espaço e responsabilidade.
+Organização modular (por feature): permite escalar para vários domínios como account/, product/, etc.
+Segregação limpa entre domínio, aplicação e infraestrutura.
+Facilita testes, manutenção e colaboração entre times.
+
+### ✅ Estrutura Modular por Módulo / Feature ( módulo User)
 
 ```text
 src/main/java/com/exemplo/hexagonal/
@@ -468,12 +540,54 @@ src/main/java/com/exemplo/hexagonal/
 
 **Resumo:** Organização por módulos de negócio (exemplo: módulo `user`), onde cada módulo é auto-contido e tem as camadas hexagonais internamente.
 
-### Estrutura Completa (Separação por Camadas Globais)
+### ✅ Estrutura com Módulos: `user` e `account`
+
+```text
+src/main/java/com/exemplo/hexagonal/
+├── HexagonalApplication.java
+├── user/                              # 🧍 Módulo de Usuário
+│   ├── domain/                        # ← CORE do módulo usuário
+│   │   ├── model/ (Usuario.java)
+│   │   └── exception/
+│   ├── application/
+│   │   ├── port/
+│   │   │   ├── input/ (CriarUsuarioUseCase.java)
+│   │   │   └── output/ (UsuarioRepositoryPort.java)
+│   │   ├── service/ (CriarUsuarioService.java)
+│   │   └── dto/
+│   ├── infrastructure/
+│   │   ├── adapter/
+│   │   │   ├── input/web/ (UsuarioController.java)
+│   │   │   └── output/persistence/
+│   │   │       ├── UsuarioRepositoryAdapter.java
+│   │   │       └── UsuarioEntity.java
+│   │   └── encoder/, email/
+│   └── mapper/ (UsuarioMapper.java)
+│
+├── account/                           # 🏦 Módulo de Conta Bancária
+│   ├──
+│
+├── shared/                            # 📦 Código compartilhado (se necessário)
+│   ├── config/ (DatabaseConfig.java, BeanConfig.java)
+│   ├── exception/ (GlobalExceptionHandler.java)
+│   └── util/
+```
+
+Deste que utizemos a inversão de dependência podemos estruturar as pastas da nossa maneira.
+
+-   Core (Domínio): é o coração da aplicação. Não conhece o banco, nem o Spring. Contém a lógica pura.
+-   Application Layer: orquestra os casos de uso. Usa interfaces (ports) para se comunicar com o mundo externo.
+-   Infrastructure: é o mundo externo — onde ficam os detalhes concretos (Web, Banco de Dados, Email...).
+-   Adapters: ligam o mundo externo (Infra) ao core, implementando as interfaces da camada de aplicação.
+
+### Estrutura Separação por Camadas Globais sem modularização explícita
+
+Separação maior de responsabilidades. Aqui temos o domínio rico, com a regras de negócio separada da aplicação.
 
 ```bash
 src/main/java/com/exemplo/hexagonal/
 ├── HexagonalApplication.java          # Classe principal (Spring Boot)
-
+│
 ├── domain/                            # 💠 Núcleo (Domínio - Core do Hexágono)
 │   ├── model/                         # → Entidades do domínio (regras e estado)
 │   │   ├── Usuario.java
@@ -484,7 +598,7 @@ src/main/java/com/exemplo/hexagonal/
 │   │   └── EmailJaExisteException.java
 │   └── service/                       # → Regras de negócio do domínio
 │       └── UsuarioDomainService.java
-
+│
 ├── application/                       # 💡 Camada de Aplicação (Casos de Uso)
 │   ├── port/                          # → Portas (interfaces para entrada/saída)
 │   │   ├── input/                     # ↪ Input Ports (Interfaces de casos de uso)
@@ -505,7 +619,7 @@ src/main/java/com/exemplo/hexagonal/
 │       ├── UsuarioDTO.java
 │       ├── CreateUsuarioCommand.java
 │       └── UpdateUsuarioCommand.java
-
+│
 ├── infrastructure/                   # 🛠️ Infraestrutura (Adapters + Configurações)
 │   ├── adapter/                      # → Adaptadores concretos
 │   │   ├── input/                    # ↪ Adaptadores Primários (ex: Web)
@@ -559,50 +673,8 @@ src/main/java/com/exemplo/hexagonal/
 
 ### Quando usar cada uma?
 
--   **Modular (Básica)** — Projetos maiores, com muitos domínios/módulos, times trabalhando separadamente.
--   **Completa (Camadas Globais)** — Projetos menores, protótipos, quando a equipe é pequena e o domínio não precisa ser muito fragmentado.
-
-### Pensando em estrutura modular:
-
-### ✅ Estrutura com Módulos: `user` e `account`
-
-```text
-src/main/java/com/exemplo/hexagonal/
-├── HexagonalApplication.java
-├── user/                              # 🧍 Módulo de Usuário
-│   ├── domain/                        # ← CORE do módulo usuário
-│   │   ├── model/ (Usuario.java)
-│   │   └── exception/
-│   ├── application/
-│   │   ├── port/
-│   │   │   ├── input/ (CriarUsuarioUseCase.java)
-│   │   │   └── output/ (UsuarioRepositoryPort.java)
-│   │   ├── service/ (CriarUsuarioService.java)
-│   │   └── dto/
-│   ├── infrastructure/
-│   │   ├── adapter/
-│   │   │   ├── input/web/ (UsuarioController.java)
-│   │   │   └── output/persistence/
-│   │   │       ├── UsuarioRepositoryAdapter.java
-│   │   │       └── UsuarioEntity.java
-│   │   └── encoder/, email/
-│   └── mapper/ (UsuarioMapper.java)
-│
-├── account/                           # 🏦 Módulo de Conta Bancária
-│   ├──
-│
-├── shared/                            # 📦 Código compartilhado (se necessário)
-│   ├── config/ (DatabaseConfig.java, BeanConfig.java)
-│   ├── exception/ (GlobalExceptionHandler.java)
-│   └── util/
-```
-
-Deste que utizemos a inversão de dependência podemos estruturar as pastas da nossa maneira.
-
--   Core (Domínio): é o coração da aplicação. Não conhece o banco, nem o Spring. Contém a lógica pura.
--   Application Layer: orquestra os casos de uso. Usa interfaces (ports) para se comunicar com o mundo externo.
--   Infrastructure: é o mundo externo — onde ficam os detalhes concretos (Web, Banco de Dados, Email...).
--   Adapters: ligam o mundo externo (Infra) ao core, implementando as interfaces da camada de aplicação.
+-   **Modular** — Projetos maiores, com muitos domínios/módulos, times trabalhando separadamente.
+-   **Estrutura Separação por Camadas Globais** — Projetos menores, protótipos, quando a equipe é pequena e o domínio não precisa ser muito fragmentado.
 
 ### 2.2 Comparação: 3 Camadas vs Hexagonal
 
@@ -677,6 +749,8 @@ src/main/java/com/exemplo/hexagonal/
 │   ├── exception/ (GlobalExceptionHandler.java)
 │   └── util/
 ```
+
+A estrutura modularizada por funcionalidade (como user/, account/) é mais didática, mais clara para aprender, escalar e manter, especialmente quando você está explicando para alunos ou iniciando em projetos maiores.
 
 ---
 
